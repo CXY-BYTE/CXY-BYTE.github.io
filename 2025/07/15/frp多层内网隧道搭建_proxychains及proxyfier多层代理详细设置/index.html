@@ -1,0 +1,288 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>xyblog | xyblog</title><meta name="author" content="Xy"><meta name="copyright" content="Xy"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="frp多层内网隧道搭建 proxychains及proxyfier多层代理详细设置前言：派蒙师傅问了我一些内网隧道搭建的问题，我发现网上对于这块内容详细讲解较少，隧道搭建后又如何进行多层代理，新手经常蒙圈，又是就有了下面的文章。 目录 环境拓扑 第一层隧道 kali 启动 frps PC1 启动 frpc 修改 etc&#x2F;proxychains4.conf 第二层隧道 PC1启动frps">
+<meta property="og:type" content="article">
+<meta property="og:title" content="xyblog">
+<meta property="og:url" content="http://example.com/2025/07/15/frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA_proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE/index.html">
+<meta property="og:site_name" content="xyblog">
+<meta property="og:description" content="frp多层内网隧道搭建 proxychains及proxyfier多层代理详细设置前言：派蒙师傅问了我一些内网隧道搭建的问题，我发现网上对于这块内容详细讲解较少，隧道搭建后又如何进行多层代理，新手经常蒙圈，又是就有了下面的文章。 目录 环境拓扑 第一层隧道 kali 启动 frps PC1 启动 frpc 修改 etc&#x2F;proxychains4.conf 第二层隧道 PC1启动frps">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/photo-1.jpg">
+<meta property="article:published_time" content="2025-07-15T09:06:42.673Z">
+<meta property="article:modified_time" content="2025-06-10T23:18:22.707Z">
+<meta property="article:author" content="Xy">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/photo-1.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "url": "http://example.com/2025/07/15/frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA_proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE/",
+  "image": "http://example.com/img/photo-1.jpg",
+  "datePublished": "2025-07-15T09:06:42.673Z",
+  "dateModified": "2025-06-10T23:18:22.707Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Xy",
+      "url": "http://example.com"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2025/07/15/frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA_proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'xyblog',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/photo-2.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/photo-1.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首頁</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 時間軸</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 標籤</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分類</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音樂</span></a></div><div class="menus_item"><a class="site-page" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 電影</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友鏈</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 關於</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/4aa8abbe/#%E9%A0%82%E9%83%A8%E5%9C%96"><span> 連結</span></a></div><div class="menus_item"><a class="site-page" href="/Butterfly"><span> 來源</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/logo.png);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">xyblog</span></a><a class="nav-page-title" href="/"><span class="site-name">xyblog</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首頁</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 時間軸</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 標籤</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分類</span></a></div><div class="menus_item"><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音樂</span></a></div><div class="menus_item"><a class="site-page" href="/Gallery/"><i class="fa-fw fas fa-images"></i><span> 照片</span></a></div><div class="menus_item"><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 電影</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友鏈</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 關於</span></a></div><div class="menus_item"><a class="site-page" target="_blank" rel="noopener" href="https://butterfly.js.org/posts/4aa8abbe/#%E9%A0%82%E9%83%A8%E5%9C%96"><span> 連結</span></a></div><div class="menus_item"><a class="site-page" href="/Butterfly"><span> 來源</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">无标题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-07-15T09:06:42.673Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-06-10T23:18:22.707Z" title="更新于 2025-06-11 07:18:22">2025-06-11</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="frp多层内网隧道搭建-proxychains及proxyfier多层代理详细设置"><a href="#frp多层内网隧道搭建-proxychains及proxyfier多层代理详细设置" class="headerlink" title="frp多层内网隧道搭建 proxychains及proxyfier多层代理详细设置"></a>frp多层内网隧道搭建 proxychains及proxyfier多层代理详细设置</h1><p>前言：派蒙师傅问了我一些内网隧道搭建的问题，我发现网上对于这块内容详细讲解较少，隧道搭建后又如何进行多层代理，新手经常蒙圈，又是就有了下面的文章。</p>
+<p><strong>目录</strong></p>
+<p>环境拓扑</p>
+<p>第一层隧道</p>
+<p>kali 启动 frps</p>
+<p>PC1 启动 frpc</p>
+<p>修改 etc&#x2F;proxychains4.conf</p>
+<p>第二层隧道</p>
+<p>PC1启动frps</p>
+<p>PC2启动frpc</p>
+<p>多层代理下Proxifier如何设置？</p>
+<p>第三层隧道</p>
+<p>PC2 启动frps</p>
+<p>pc3启动frpc</p>
+<hr>
+<h2 id="环境拓扑"><a href="#环境拓扑" class="headerlink" title="环境拓扑"></a>环境拓扑</h2><p><img src="https://i-blog.csdnimg.cn/blog_migrate/4ce48ad457324c956bc9c27765672ad7.png"></p>
+<pre><code>kali    192.168.112.128
+PC1    nat 192.168.112.152       vm1网卡 192.168.52.20
+PC2    vm1网卡 192.168.52.30      vm2网卡 192.168.54.40
+PC3    vm2网卡  192.168.54.50     vm3网卡 192.168.93.60
+PC4    VM3网卡   192.168.93.70
+</code></pre>
+<h2 id="第一层隧道"><a href="#第一层隧道" class="headerlink" title="第一层隧道"></a>第一层隧道</h2><h3 id="kali-启动-frps"><a href="#kali-启动-frps" class="headerlink" title="kali 启动 frps"></a>kali 启动 frps</h3><p>配置文件如下</p>
+<p>frps.ini</p>
+<pre><code>[common]
+bind_addr = 0.0.0.0
+bind_port = 7000
+</code></pre>
+<p>启动命令</p>
+<pre><code>frps -c frps.ini
+</code></pre>
+<p>Windows 后台运行</p>
+<pre><code>start /b frps -c frps.ini
+</code></pre>
+<p>这样即使CTRL +C也不会断开</p>
+<p>Linux 后台运行</p>
+<pre><code>nohup ./frps -c ./frps.ini &gt;/dev/null 2&gt;&amp;1 &amp;
+</code></pre>
+<p>停止：</p>
+<p>先找到pid进程</p>
+<ul>
+<li>ps -aux|grep frp| grep -v grep</li>
+</ul>
+<p>例如找到进程为 6666</p>
+<ul>
+<li>kill -9 6666</li>
+</ul>
+<h3 id="PC1-启动-frpc"><a href="#PC1-启动-frpc" class="headerlink" title="PC1 启动 frpc"></a>PC1 启动 frpc</h3><p>frpc.ini</p>
+<pre><code>[common]
+server_addr = 192.168.112.128
+server_port = 7000
+
+[http_proxy]
+type = tcp
+remote_port = 7777
+plugin = socks5
+local_ip = 192.168.52.20
+local_port = 7777
+</code></pre>
+<p>启动命令</p>
+<pre><code>frpc -c frpc.ini
+</code></pre>
+<h3 id="修改-etc-proxychains4-conf"><a href="#修改-etc-proxychains4-conf" class="headerlink" title="修改 etc&#x2F;proxychains4.conf"></a>修改 etc&#x2F;proxychains4.conf</h3><pre><code>vi /etc/proxychains4.conf
+</code></pre>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/46dac6751c90b9be332ed5eb0477f33e.png"></p>
+<p>proxyfier如图所示</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/b4b20807b401fa443a87a15ceede3b25.png"></p>
+<p>此时我们可以访问192.168.52.0这个网段</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/bd5579ed616ee464f28fa771f923cee7.png"></p>
+<p>我们想访问192.168.54.0此时需要搭建第二层隧道</p>
+<h2 id="第二层隧道"><a href="#第二层隧道" class="headerlink" title="第二层隧道"></a>第二层隧道</h2><p>此时PC1既是客户端又是服务端</p>
+<p>我们在PC1增加一个服务端</p>
+<h3 id="PC1启动frps"><a href="#PC1启动frps" class="headerlink" title="PC1启动frps"></a>PC1启动frps</h3><p>frps.ini</p>
+<pre><code>[common]
+bind_addr = 192.168.52.20
+bind_port = 7000
+</code></pre>
+<h3 id="PC2启动frpc"><a href="#PC2启动frpc" class="headerlink" title="PC2启动frpc"></a>PC2启动frpc</h3><p>frpc.ini</p>
+<pre><code>[common]
+server_addr = 192.168.52.20
+server_port = 7000
+
+[http_proxy]
+type = tcp
+remote_port = 7777
+plugin = socks5
+local_ip = 192.168.54.40
+local_port = 7777
+</code></pre>
+<p>在 etc&#x2F;proxychains4.conf 新增第二层代理</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/74dbf6f62aa43497fe5cf466986efee4.png"></p>
+<p>此时我们可以访问192.168.54.0这个网段了</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/120d404127c8f0b785618476ed0b9ce7.png"></p>
+<h3 id="多层代理下Proxifier如何设置？"><a href="#多层代理下Proxifier如何设置？" class="headerlink" title="多层代理下Proxifier如何设置？"></a>多层代理下Proxifier如何设置？</h3><p>再增加一个代理，这里是设置的第二层代理</p>
+<p>点击Proxychains 右边create将代理链按顺序从proxy servers里按住依次拖下，我这里起的名字代理链，都要拖在你起的这个名字（我这里是代理链）里，注意在同一级，如图所示</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/963b46504aaa7609f28b235de241daf0.png"></p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/cd8a03877b734ef9acb954faafb52fb9.png"></p>
+<p>点击左下角add</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/9a89103fcf480552501e1a89fcd757df.png"></p>
+<p>配置如下 添加通向网段</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/5d9900d18e2d3615e7fefb18bf8c90a1.png"></p>
+<p>成功访问54网段</p>
+<h2 id=""><a href="#" class="headerlink" title=""></a><img src="https://i-blog.csdnimg.cn/blog_migrate/9e651a5411c60393942f27481a9a81de.png"></h2><h2 id="第三层隧道"><a href="#第三层隧道" class="headerlink" title="第三层隧道"></a>第三层隧道</h2><h3 id="PC2-启动frps"><a href="#PC2-启动frps" class="headerlink" title="PC2 启动frps"></a>PC2 启动frps</h3><p>原先PC2的frpc.ini无需变动</p>
+<p>frps.ini</p>
+<pre><code>[common]
+bind_addr = 192.168.54.40
+bind_port = 7000
+</code></pre>
+<h3 id="pc3启动frpc"><a href="#pc3启动frpc" class="headerlink" title="pc3启动frpc"></a>pc3启动frpc</h3><p>frpc.ini</p>
+<pre><code>[common]
+server_addr = 192.168.54.40
+server_port = 7000
+
+[http_proxy]
+type = tcp
+remote_port = 7777
+plugin = socks5
+local_ip = 192.168.93.60
+local_port = 7777
+</code></pre>
+<h4 id="-1"><a href="#-1" class="headerlink" title=""></a><img src="https://i-blog.csdnimg.cn/blog_migrate/6a911e400bf11a742efae108f997508f.png"></h4><p><img src="https://i-blog.csdnimg.cn/blog_migrate/64fb257320865444b9a72f8fc2c69ec2.png"></p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/d39952948cc1b5c0e6d64a13dad50c7a.png"></p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/13355150a401313822263135393a5dd5.png"></p>
+<p>可以访问93这个网段了</p>
+<p>访问下PC4</p>
+<p><img src="https://i-blog.csdnimg.cn/blog_migrate/47d78825b5b72afea3989e643761500d.png"></p>
+<p>按照这种方式不断搭建隧道，无论多少层我们都能访问</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Xy</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2025/07/15/frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA_proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE/">http://example.com/2025/07/15/frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA_proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">xyblog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/photo-1.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" title=""><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2"></div></div><div class="info-2"><div class="info-item-1">frp内网穿透—将kali代理在公网中进行渗透测试文章目录 * 前言   Frp简介 准备工具 实现内网穿透   * frp服务端配置   frp客户端配置   测试   * HTTP服务测试   ssh服务测试 反弹shell测试   注意    前言由于工作常需要用到kali，但是公网服务器并没有安装kali镜像，本地只安装了kali虚拟机，而msf渗透时常常需要反弹shell到kali中，但内网中的kali并没有公网IP地址，因而可以 通过frp工具将 内网中的服务 映射到 公网IP地址的端口中  从前的日色变得慢，车，马，邮件都慢。  Frp简介frp 是一个高性能的反向代理应用，采用C&#x2F;S架构(客户端&#x2F;服务端)，通过简单的配置能够将客户端中的tcp, udp, http, https 等协议隐射到服务端相应端口上，通过访问服务端对应的端口即能够访问到客户端对应的服务。frp实现效果大致如下，通过访问公网服务器的某个端口即可访问到内网服务器中的某个服务 准备工具为了完成frp内外穿透，你需要准备好如下资源&#x2F;工具  公网服务器，这里我用的是Ce...</div></div></div></a><a class="pagination-related" href="/2025/07/15/Fortify%E4%B8%AD%E6%96%87%E4%B9%B1%E7%A0%81_Audit_Workbench/" title=""><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2"></div></div><div class="info-2"><div class="info-item-1">Fortify中文乱码 Audit Workbench乱码现象原因由于Audit Workbench使用的eclipse默认编码为GBK，导致在其中查看以UTF-8编码的文件出现乱码问题。 单文件乱码解决方法可通过Edit下Set Encoding设置。需要光标在右侧代码框内。用于设置单个文件的编码方式 修改Audit Workbench默认编码找到productlaunch.cmd文件（C:\Program Files\Fortify\Fortify_SCA_and_Apps_18.20\Core\private-bin\awb\productlaunch.cmd）在最后这一行末添加-Dfile.encoding=utf-8，以规定其eclipse.exe默认使用utf-8编码。修改前 start &quot;%FORTIFY_CORE%&quot; /B /MIN &quot;%FORTIFY_CORE%\private-bin\awb\eclipse\eclipse.exe&quot; -vm &quot;%JAVA_CMD%&quot; -startup &quot;%F...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/photo-1.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Xy</div><div class="author-info-description">xy的博客</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#frp%E5%A4%9A%E5%B1%82%E5%86%85%E7%BD%91%E9%9A%A7%E9%81%93%E6%90%AD%E5%BB%BA-proxychains%E5%8F%8Aproxyfier%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E8%AF%A6%E7%BB%86%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.</span> <span class="toc-text">frp多层内网隧道搭建 proxychains及proxyfier多层代理详细设置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E6%8B%93%E6%89%91"><span class="toc-number">1.1.</span> <span class="toc-text">环境拓扑</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%E9%9A%A7%E9%81%93"><span class="toc-number">1.2.</span> <span class="toc-text">第一层隧道</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#kali-%E5%90%AF%E5%8A%A8-frps"><span class="toc-number">1.2.1.</span> <span class="toc-text">kali 启动 frps</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PC1-%E5%90%AF%E5%8A%A8-frpc"><span class="toc-number">1.2.2.</span> <span class="toc-text">PC1 启动 frpc</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9-etc-proxychains4-conf"><span class="toc-number">1.2.3.</span> <span class="toc-text">修改 etc&#x2F;proxychains4.conf</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%E9%9A%A7%E9%81%93"><span class="toc-number">1.3.</span> <span class="toc-text">第二层隧道</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#PC1%E5%90%AF%E5%8A%A8frps"><span class="toc-number">1.3.1.</span> <span class="toc-text">PC1启动frps</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PC2%E5%90%AF%E5%8A%A8frpc"><span class="toc-number">1.3.2.</span> <span class="toc-text">PC2启动frpc</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E5%B1%82%E4%BB%A3%E7%90%86%E4%B8%8BProxifier%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%EF%BC%9F"><span class="toc-number">1.3.3.</span> <span class="toc-text">多层代理下Proxifier如何设置？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">1.4.</span> <span class="toc-text"></span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%E9%9A%A7%E9%81%93"><span class="toc-number">1.5.</span> <span class="toc-text">第三层隧道</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#PC2-%E5%90%AF%E5%8A%A8frps"><span class="toc-number">1.5.1.</span> <span class="toc-text">PC2 启动frps</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#pc3%E5%90%AF%E5%8A%A8frpc"><span class="toc-number">1.5.2.</span> <span class="toc-text">pc3启动frpc</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#-1"><span class="toc-number">1.5.2.1.</span> <span class="toc-text"></span></a></li></ol></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/%E5%9F%BA%E4%BA%8EFRP%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E5%B7%A5%E5%85%B7%E5%AE%9E%E7%8E%B0%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F%E6%94%BB%E5%87%BB/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.688Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/%E7%BA%A2%E6%97%A5%E5%AE%89%E5%85%A8%E7%BA%A2%E9%98%9F%E9%9D%B6%E5%9C%BA_%E4%B8%89_%E4%B8%80%E6%AC%A1%E7%AE%80%E5%8D%95%E7%9A%84%E5%86%85%E7%BD%91%E6%B8%97%E9%80%8F/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.686Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/java%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F_%E7%9A%84%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%AF%A6%E8%A7%A3_%E5%85%A8%E7%BD%91%E6%9C%80%E8%AF%A6%E7%BB%86%E6%95%99%E7%A8%8B_/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.684Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/fscan%E5%B7%A5%E5%85%B7%E7%9A%84%E4%BD%BF%E7%94%A8/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.681Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/07/15/frp%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F_%E5%B0%86kali%E4%BB%A3%E7%90%86%E5%9C%A8%E5%85%AC%E7%BD%91%E4%B8%AD%E8%BF%9B%E8%A1%8C%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95_1/" title="无标题">无标题</a><time datetime="2025-07-15T09:06:42.678Z" title="发表于 2025-07-15 17:06:42">2025-07-15</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(/img/background.png);"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;2025 By Xy</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
